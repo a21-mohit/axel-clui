@@ -1,0 +1,113 @@
+#!/bin/bash
+case $1 in
+"")
+	while true
+	do
+		echo "Configuration:"
+		echo "1. Max connections per server"
+		echo "2. Exit"
+		read c
+		case $c in
+		1)
+			echo "Enter your desired max connections per server"
+			read n
+			sed -i "/MAX_CONNECTIONS_PER_SERVER/s/[0-9]\+/$n/g" /etc/axel-clui/axel-clui.conf
+		;;
+		2)
+			break
+		;;
+		*)
+		;;
+		esac	
+	done
+;;
+--help|-h)
+	echo -e "\nUsage:"
+	echo -e "\t$(basename $0) \t\tfor config menu"
+	echo -e "\t$(basename $0) --help|-h \tfor this menu"
+	echo -e "\t$(basename $0) URL \t\tto start downloading\n"
+;;
+*)
+	cd
+	if [ ! -d ./Downloads ];
+	then
+		mkdir ./Downloads
+	fi
+	cd ./Downloads
+	if [ ! -d ./Compressed ];
+	then
+		mkdir ./Compressed
+	fi		
+	if [ ! -d ./Documents ];
+	then
+		mkdir ./Documents
+	fi		
+	if [ ! -d ./Music ];
+	then
+		mkdir ./Music
+	fi		
+	if [ ! -d ./Programs ];
+	then
+		mkdir ./Programs
+	fi		
+	if [ ! -d ./Video ];
+	then
+		mkdir ./Video
+	fi	
+
+
+	echo $1 | grep -i -E '\.(BIN|ZIP|GZ|7Z|XZ|Z|TAR|TGZ|BZ2|LZH|A[0-9]?|RAR|R[0-9][0-9])[^a-zA-Z0-9\s\:]?' &> /dev/null
+	if [ $? == 0 ];
+	then
+		type=archive
+	fi
+
+	echo $1 | grep -i -E '\.(mp3|wav|wma|mpa|ram|ra|aac|aif|m4a)[^a-zA-Z0-9\s\:]?' &> /dev/null
+	if [ $? == 0 ];
+	then
+		type=document
+	fi
+
+	echo $1 | grep -i -E '\.(mp3|wav|wma|mpa|ram|ra|aac|aif|m4a|ogg)[^a-zA-Z0-9\s\:]?' &> /dev/null
+	if [ $? == 0 ];
+	then
+		type=music
+	fi
+
+	echo $1 | grep -i -E '\.(ISO|RPM|DEB|EXE|MSI|APK)[^a-zA-Z0-9\s\:]?' &> /dev/null
+	if [ $? == 0 ];
+	then
+		type=program
+	fi
+
+	echo $1 | grep -i -E '\.(avi|mpg|mpe|mpeg|asf|wmv|mov|qt|rm|mp4|flv|m4v|webm|ogv|mkv)[^a-zA-Z0-9\s\:]?' &> /dev/null
+	if [ $? == 0 ];
+	then
+		type=video
+	fi
+
+	case $type in
+	archive)
+		cd ./Compressed
+	;;
+	document)
+		cd ./Documents
+	;;
+	music)
+		cd ./Music
+	;;
+	program)
+		cd ./Programs
+	;;
+	video)
+		cd ./Video
+	;;
+	esac	
+	cps=$(awk -F= '/MAX_CONNECTIONS_PER_SERVER/{print $2}' /etc/axel-clui/axel-clui.conf)
+	temp=$(openssl rand -hex 3)
+	gnome-terminal -x bash -c "script -q -c \"axel -a -n $cps $1\" /tmp/axel.$temp; 
+		filename=$(awk -F' ' '/^Opening output\ file/{print $4}' /tmp/axel.$temp);
+		dllink=$(awk -F' ' '/^Initializing\ download/{print $3}' /tmp/axel.$temp);
+		echo "$filename $dllink" >> ~/axeldb" 2> /dev/null
+
+esac
