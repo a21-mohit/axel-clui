@@ -1,6 +1,14 @@
 #!/bin/bash
+
+if [ ! -f $HOME/.axel-clui.conf ];
+then
+	echo "MAX_CONNECTIONS_PER_SERVER=16" > $HOME/.axel-clui.conf		#   Generate config file in $HOME/.axel-clui.conf if it doesn't exist
+fi
+
+
 case $1 in
 "")
+#   Show configuration menu if no arguments passed 
 	while true
 	do
 		echo "Configuration:"
@@ -11,7 +19,7 @@ case $1 in
 		1)
 			echo "Enter your desired max connections per server"
 			read n
-			sed -i "/MAX_CONNECTIONS_PER_SERVER/s/[0-9]\+/$n/g" /etc/axel-clui/axel-clui.conf
+			sed -i "/MAX_CONNECTIONS_PER_SERVER/s/[0-9]\+/$n/g" $HOME/.axel-clui.conf	#   Replace old value of MAX_CONNECTIONS_PER_SERVER in config file with new value
 		;;
 		2)
 			break
@@ -22,92 +30,64 @@ case $1 in
 	done
 ;;
 --help|-h)
+#   Show usage menu if first argument is --help or -h
+	
 	echo -e "\nUsage:"
 	echo -e "\t$(basename $0) \t\tfor config menu"
 	echo -e "\t$(basename $0) --help|-h \tfor this menu"
 	echo -e "\t$(basename $0) URL \t\tto start downloading\n"
 ;;
 *)
-	cd
-	if [ ! -d ./Downloads ];
-	then
-		mkdir ./Downloads
-	fi
-	cd ./Downloads
-	if [ ! -d ./Compressed ];
-	then
-		mkdir ./Compressed
-	fi		
-	if [ ! -d ./Documents ];
-	then
-		mkdir ./Documents
-	fi		
-	if [ ! -d ./Music ];
-	then
-		mkdir ./Music
-	fi		
-	if [ ! -d ./Programs ];
-	then
-		mkdir ./Programs
-	fi		
-	if [ ! -d ./Video ];
-	then
-		mkdir ./Video
-	fi	
+	DOWNLOAD_DIR=$HOME/Downloads				#   Initialize download directory path
+	SUBDIR=""						#
 
+	#
+	#   Change value of SUBDIR depending of file extention
+	#   If none match then keep SUBDIR blank
+	# 
 
 	echo $1 | grep -i -E '\.(BIN|ZIP|GZ|7Z|XZ|Z|TAR|TGZ|BZ2|LZH|A[0-9]?|RAR|R[0-9][0-9])[^a-zA-Z0-9\s\:]?' &> /dev/null
 	if [ $? == 0 ];
 	then
-		type=archive
+		SUBDIR=Compressed
 	fi
 
-	echo $1 | grep -i -E '\.(mp3|wav|wma|mpa|ram|ra|aac|aif|m4a)[^a-zA-Z0-9\s\:]?' &> /dev/null
+	echo $1 | grep -i -E '\.(doc|pdf|ppt|pps|docx|pptx)[^a-zA-Z0-9\s\:]?' &> /dev/null
 	if [ $? == 0 ];
 	then
-		type=document
+		SUBDIR=Documents
 	fi
 
 	echo $1 | grep -i -E '\.(mp3|wav|wma|mpa|ram|ra|aac|aif|m4a|ogg)[^a-zA-Z0-9\s\:]?' &> /dev/null
 	if [ $? == 0 ];
 	then
-		type=music
+		SUBDIR=Music
 	fi
 
 	echo $1 | grep -i -E '\.(ISO|RPM|DEB|EXE|MSI|APK)[^a-zA-Z0-9\s\:]?' &> /dev/null
 	if [ $? == 0 ];
 	then
-		type=program
+		SUBDIR=Programs
 	fi
 
 	echo $1 | grep -i -E '\.(avi|mpg|mpe|mpeg|asf|wmv|mov|qt|rm|mp4|flv|m4v|webm|ogv|mkv)[^a-zA-Z0-9\s\:]?' &> /dev/null
 	if [ $? == 0 ];
 	then
-		type=video
+		SUBDIR=Video
 	fi
+	
+	pidof_axel=0
+	pidof_axel=$(pgrep -f "^axel -a -n [0-9]+ $1")
+	if [ pidof_axel > 0 ];
+	then
+		kill -SIGINT $pidof_axel			#   Stop Downloading if somehow same file is again asked to download while it is currently being downloaded
+	fi
+	
+	#
+	#   Start or resume file download depending on value of MAX_CONNECTION_PER_SERVER in $HOME/.axel-clui.conf
+	#   in directory path depending on DOWNLOAD_DIR and SUBDIR. Make directories if they don't exist.
+	#
 
-	case $type in
-	archive)
-		cd ./Compressed
-	;;
-	document)
-		cd ./Documents
-	;;
-	music)
-		cd ./Music
-	;;
-	program)
-		cd ./Programs
-	;;
-	video)
-		cd ./Video
-	;;
-	esac	
-	cps=$(awk -F= '/MAX_CONNECTIONS_PER_SERVER/{print $2}' /etc/axel-clui/axel-clui.conf)
-	temp=$(openssl rand -hex 3)
-	gnome-terminal -x bash -c "script -q -c \"axel -a -n $cps $1\" /tmp/axel.$temp; 
-		filename=$(awk -F' ' '/^Opening output\ file/{print $4}' /tmp/axel.$temp);
-		dllink=$(awk -F' ' '/^Initializing\ download/{print $3}' /tmp/axel.$temp);
-		echo "$filename $dllink" >> ~/axeldb" 2> /dev/null
-
+	cps=$(awk -F= '/MAX_CONNECTIONS_PER_SERVER/{print $2}' $HOME/.axel-clui.conf)
+	gnome-terminal -x bash -c "mkdir -p $DOWNLOAD_DIR/$SUBDIR 2> /dev/null; cd $DOWNLOAD_DIR/$SUBDIR; axel -a -n $cps $1" 2> /dev/null
 esac
