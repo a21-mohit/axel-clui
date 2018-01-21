@@ -6,7 +6,7 @@ The download url is passed as first argument
 
 
 
-It scans the download url for file extention and downloads the file properly inside one of the following folder inside ~/Dowloads directory .
+It scans the download url for file extention and downloads the file properly inside one of the following folder inside ~/Downloads directory .
 
 
   Compressed - BIN|ZIP|GZ|7Z|XZ|Z|TAR|TGZ|BZ2|LZH|A[0-9]?|RAR|R[0-9][0-9]
