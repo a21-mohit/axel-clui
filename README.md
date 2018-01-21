@@ -5,7 +5,6 @@ The download url is passed as first argument
 
 
 
-
 It scans the download url for file extention and downloads the file properly inside one of the following folder inside ~/Downloads directory .
 
 
