@@ -1,14 +1,11 @@
 #!/bin/bash
-
 if [ ! -f $HOME/.axel-clui.conf ];
 then
-	echo "MAX_CONNECTIONS_PER_SERVER=16" > $HOME/.axel-clui.conf		#   Generate config file in $HOME/.axel-clui.conf if it doesn't exist
+	echo "MAX_CONNECTIONS_PER_SERVER=16" > $HOME/.axel-clui.conf
 fi
 
-
 case $1 in
-"")
-#   Show configuration menu if no arguments passed 
+-c)
 	while true
 	do
 		echo "Configuration:"
@@ -19,7 +16,7 @@ case $1 in
 		1)
 			echo "Enter your desired max connections per server"
 			read n
-			sed -i "/MAX_CONNECTIONS_PER_SERVER/s/[0-9]\+/$n/g" $HOME/.axel-clui.conf	#   Replace old value of MAX_CONNECTIONS_PER_SERVER in config file with new value
+			sed -i "/MAX_CONNECTIONS_PER_SERVER/s/[0-9]\+/$n/g" $HOME/.axel-clui.conf
 		;;
 		2)
 			break
@@ -29,23 +26,16 @@ case $1 in
 		esac	
 	done
 ;;
---help|-h)
-#   Show usage menu if first argument is --help or -h
+--help|-h|'')
 	
 	echo -e "\nUsage:"
-	echo -e "\t$(basename $0) \t\tfor config menu"
+	echo -e "\t$(basename $0) -c \t\tfor config menu"
 	echo -e "\t$(basename $0) --help|-h \tfor this menu"
 	echo -e "\t$(basename $0) URL \t\tto start downloading\n"
 ;;
 *)
-	DOWNLOAD_DIR=$HOME/Downloads				#   Initialize download directory path
-	SUBDIR=""						#
-
-	#
-	#   Change value of SUBDIR depending of file extention
-	#   If none match then keep SUBDIR blank
-	# 
-
+	DOWNLOAD_DIR=$HOME/Downloads
+	SUBDIR=""
 	echo $1 | grep -i -E '\.(BIN|ZIP|GZ|7Z|XZ|Z|TAR|TGZ|BZ2|LZH|A[0-9]?|RAR|R[0-9][0-9])[^a-zA-Z0-9\s\:]?' &> /dev/null
 	if [ $? == 0 ];
 	then
@@ -77,17 +67,12 @@ case $1 in
 	fi
 	
 	pidof_axel=0
-	pidof_axel=$(pgrep -f "^axel -a -n [0-9]+ $1")
-	if [ pidof_axel > 0 ];
+	pidof_axel=$(pgrep -f "^axel -a -n [0-9]+ $1" || echo 0)
+	if [ $pidof_axel -gt 0 ];
 	then
-		kill -SIGINT $pidof_axel			#   Stop Downloading if somehow same file is again asked to download while it is currently being downloaded
+		kill -SIGINT $pidof_axel
 	fi
 	
-	#
-	#   Start or resume file download depending on value of MAX_CONNECTION_PER_SERVER in $HOME/.axel-clui.conf
-	#   in directory path depending on DOWNLOAD_DIR and SUBDIR. Make directories if they don't exist.
-	#
-
 	cps=$(awk -F= '/MAX_CONNECTIONS_PER_SERVER/{print $2}' $HOME/.axel-clui.conf)
-	gnome-terminal -x bash -c "mkdir -p $DOWNLOAD_DIR/$SUBDIR 2> /dev/null; cd $DOWNLOAD_DIR/$SUBDIR; axel -a -n $cps $1" 2> /dev/null
+	gnome-terminal -x bash -c "mkdir -p $DOWNLOAD_DIR/$SUBDIR 2> /dev/null; cd $DOWNLOAD_DIR/$SUBDIR; axel -a -c -n $cps \"$1\"" 2> /dev/null
 esac
